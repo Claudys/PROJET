@@ -1,0 +1,135 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  password  String
+  role      Role     @default(CLIENT)
+  fullName  String
+  kycStatus KYCStatus @default(PENDING)
+  nationalId String?
+  selfieUrl  String?
+  wallet    Wallet?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  transactionsSent     Transaction[] @relation("Sender")
+  transactionsReceived Transaction[] @relation("Receiver")
+  savings   Saving[]
+  credits   Credit[]
+  agent     Agent?
+  merchant  Merchant?
+}
+
+enum Role {
+  CLIENT
+  AGENT
+  MERCHANT
+  ADMIN
+}
+
+enum KYCStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  balance   Float    @default(0)
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  amount    Float
+  type      TransactionType
+  status    TransactionStatus @default(SUCCESS)
+  senderId  String
+  receiverId String
+  sender    User   @relation("Sender", fields: [senderId], references: [id])
+  receiver  User   @relation("Receiver", fields: [receiverId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum TransactionType {
+  P2P
+  P2B
+  B2P
+  BILL
+  WITHDRAW
+  DEPOSIT
+}
+
+enum TransactionStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+model Agent {
+  id       String @id @default(uuid())
+  userId   String @unique
+  license  String
+  user     User   @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Merchant {
+  id       String @id @default(uuid())
+  userId   String @unique
+  businessName String
+  qrCodeUrl    String?
+  user     User   @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model BillPayment {
+  id       String @id @default(uuid())
+  userId   String
+  provider String
+  reference String
+  amount   Float
+  status   TransactionStatus @default(PENDING)
+  user     User   @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Saving {
+  id       String @id @default(uuid())
+  userId   String
+  goalName String
+  targetAmount Float
+  savedAmount  Float @default(0)
+  interestRate Float @default(0.05)
+  user     User   @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Credit {
+  id       String @id @default(uuid())
+  userId   String
+  amount   Float
+  status   CreditStatus @default(PENDING)
+  dueDate  DateTime
+  user     User   @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum CreditStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REPAID
+}
